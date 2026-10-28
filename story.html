@@ -1,0 +1,385 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Storytelling Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --blue: #1769aa;
+  --navy: #12304a;
+  --bg: #f3f7fb;
+  --green: #168568;
+  --text: #26394b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+header {
+  background: linear-gradient(120deg, #12304a, #1769aa);
+  color: white;
+  padding: 28px 6%;
+}
+header h1 { margin: 0 0 10px; }
+header p { margin: 0; line-height: 1.6; color: #e0efff; }
+.container { max-width: 1200px; margin: auto; padding: 24px; }
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 12px; margin-bottom: 20px;
+}
+select, button {
+  padding: 11px 14px; border: 1px solid #cbd8e5;
+  border-radius: 8px; background: white; font-size: 14px;
+}
+button { cursor: pointer; background: var(--blue); color: white; }
+button:hover { opacity: .9; }
+.story {
+  background: white; padding: 20px; border-radius: 14px;
+  border-left: 5px solid var(--green); margin-bottom: 20px;
+  box-shadow: 0 3px 14px #18364d0a; line-height: 1.7;
+}
+.kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 16px; margin-bottom: 20px;
+}
+.card, .chart-card {
+  background: white; border-radius: 14px; padding: 20px;
+  box-shadow: 0 3px 14px #18364d0a; min-width: 0;
+}
+.kpi-label { color: #60758a; font-size: 14px; }
+.kpi-value { font-size: 28px; font-weight: bold; margin: 12px 0 6px; }
+.kpi-note { color: #60758a; font-size: 12px; }
+.charts {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px; margin-bottom: 20px;
+}
+.chart-card h3 { margin-top: 0; font-size: 17px; }
+.chart-wrap { height: 280px; position: relative; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 10px; border-bottom: 1px solid #e8eef4; text-align: left; }
+th { color: #536b80; background: #f7fafc; }
+.table-wrap { overflow-x: auto; }
+footer { text-align: center; padding: 25px; color: #64788b; font-size: 12px; }
+.notice { font-size: 13px; color: #6a5a31; background: #fff8e6;
+  border-radius: 10px; padding: 14px; line-height: 1.6; }
+@media(max-width: 800px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .charts { grid-template-columns: 1fr; }
+}
+@media(max-width: 440px) {
+  .kpis { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .card, .chart-card { padding: 13px; }
+  .kpi-value { font-size: 22px; }
+  .container { padding: 14px; }
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>🩺 Healthcare Storytelling</h1>
+  <p>From patient data to meaningful insights — explore the story
+  behind health patterns and follow-up care.</p>
+</header>
+
+<main class="container">
+  <div class="toolbar">
+    <label for="conditionFilter"><strong>Explore condition:</strong></label>
+    <select id="conditionFilter">
+      <option value="All">All conditions</option>
+      <option value="Diabetes">Diabetes</option>
+      <option value="Hypertension">Hypertension</option>
+      <option value="Heart Disease">Heart Disease</option>
+      <option value="Respiratory">Respiratory</option>
+      <option value="None">No listed condition</option>
+    </select>
+    <button id="resetButton">Reset dashboard</button>
+  </div>
+
+  <section class="story">
+    <h2>Chapter 1 — Who are our patients?</h2>
+    <p id="story1">Every patient record represents a part of the healthcare
+    story. Begin by exploring the population and its health conditions.</p>
+  </section>
+
+  <section class="kpis">
+    <div class="card">
+      <div class="kpi-label">Patients in view</div>
+      <div class="kpi-value" id="total">0</div>
+      <div class="kpi-note">Demonstration records</div>
+    </div>
+    <div class="card">
+      <div class="kpi-label">Average age</div>
+      <div class="kpi-value" id="avgAge">0</div>
+      <div class="kpi-note">Years</div>
+    </div>
+    <div class="card">
+      <div class="kpi-label">Pending follow-ups</div>
+      <div class="kpi-value" id="pending">0</div>
+      <div class="kpi-note">Administrative tracking</div>
+    </div>
+    <div class="card">
+      <div class="kpi-label">Follow-ups completed</div>
+      <div class="kpi-value" id="completion">0%</div>
+      <div class="kpi-note">Among records in view</div>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="chart-card">
+      <h3>Patient conditions</h3>
+      <div class="chart-wrap"><canvas id="conditionChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Patient age groups</h3>
+      <div class="chart-wrap"><canvas id="ageChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="story">
+    <h2>Chapter 2 — What patterns can we discover?</h2>
+    <p id="story2">Compare measurements and explore how the dataset
+    varies across age groups and health conditions.</p>
+  </section>
+
+  <section class="charts">
+    <div class="chart-card">
+      <h3>Average blood sugar reading by condition</h3>
+      <div class="chart-wrap"><canvas id="sugarChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Age and systolic blood pressure</h3>
+      <div class="chart-wrap"><canvas id="bpChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="story">
+    <h2>Chapter 3 — What happens next?</h2>
+    <p id="story3">Follow-up records help the healthcare team track
+    outstanding administrative tasks and plan appropriate reviews.</p>
+  </section>
+
+  <section class="chart-card" style="margin-bottom:20px">
+    <h3>Follow-up status</h3>
+    <div class="chart-wrap"><canvas id="followChart"></canvas></div>
+  </section>
+
+  <section class="chart-card" style="margin-bottom:20px">
+    <h3>Sample patient records</h3>
+    <p class="kpi-note">Synthetic data only. These IDs do not identify real people.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Patient ID</th><th>Age</th><th>Condition</th>
+            <th>Blood sugar</th><th>Systolic BP</th><th>Follow-up</th>
+          </tr>
+        </thead>
+        <tbody id="patientRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="notice">
+    <strong>Educational disclaimer:</strong> This dashboard uses
+    randomly generated demonstration records. It is not a clinical
+    decision tool. Blood sugar interpretation depends on the test type
+    and clinical context. Charts and thresholds must not be used to
+    diagnose patients or determine treatment. Clinical decisions belong
+    to qualified healthcare professionals.
+  </div>
+</main>
+
+<footer>
+  Healthcare Storytelling Dashboard · Built with HTML, CSS and Chart.js
+</footer>
+
+<script>
+const conditions = [
+  "Diabetes", "Hypertension", "Heart Disease", "Respiratory", "None"
+];
+
+// Reproducible synthetic demo dataset
+let seed = 2026;
+function random() {
+  seed = (seed * 16807) % 2147483647;
+  return (seed - 1) / 2147483646;
+}
+function between(min, max) {
+  return Math.floor(random() * (max - min + 1)) + min;
+}
+function choose(arr) {
+  return arr[between(0, arr.length - 1)];
+}
+
+const patients = Array.from({length: 120}, (_, i) => {
+  const condition = choose(conditions);
+  const age = between(18, 85);
+  const sugarBase = condition === "Diabetes" ? 155 : 112;
+  const bpBase = condition === "Hypertension" ? 150 : 123;
+  return {
+    id: "DEMO" + String(i + 1).padStart(4, "0"),
+    age,
+    gender: choose(["Female", "Male"]),
+    condition,
+    sugar: Math.max(65, Math.min(260,
+      Math.round(sugarBase + between(-35, 55)))),
+    bp: Math.max(85, Math.min(200, bpBase + between(-25, 35))),
+    follow: random() < 0.28 ? "Pending" : "Completed"
+  };
+});
+
+const palette = ["#1769aa", "#168568", "#e6a23c", "#8064a2", "#9aa9b7"];
+const charts = {};
+
+function makeChart(id, type, data, options = {}) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type, data, options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" } },
+      ...options
+    }
+  });
+}
+
+function updateDashboard() {
+  const selected = document.getElementById("conditionFilter").value;
+  const rows = selected === "All"
+    ? patients
+    : patients.filter(p => p.condition === selected);
+
+  const count = rows.length;
+  const avg = count
+    ? rows.reduce((sum, p) => sum + p.age, 0) / count : 0;
+  const pending = rows.filter(p => p.follow === "Pending").length;
+  const completed = count - pending;
+
+  document.getElementById("total").textContent = count;
+  document.getElementById("avgAge").textContent = avg.toFixed(1);
+  document.getElementById("pending").textContent = pending;
+  document.getElementById("completion").textContent =
+    count ? (completed / count * 100).toFixed(1) + "%" : "0%";
+
+  document.getElementById("story1").textContent = count
+    ? `The current view contains ${count} synthetic patient records.
+       The average age is ${avg.toFixed(1)} years. Explore the charts
+       to see how the selected group is represented.`
+    : "No records match this filter.";
+
+  document.getElementById("story2").textContent = count
+    ? "Measurements vary across these synthetic records. Compare the charts
+       to investigate patterns, remembering that an observed association
+       does not prove that one factor causes another."
+    : "Choose another filter to explore the data.";
+
+  document.getElementById("story3").textContent = count
+    ? `${pending} records have a pending follow-up status and ${completed}
+       are marked completed. These are administrative statuses, not
+       clinical urgency rankings.`
+    : "No follow-up records are available for this filter.";
+
+  const conditionCounts = conditions.map(c =>
+    rows.filter(p => p.condition === c).length
+  );
+
+  makeChart("conditionChart", "doughnut", {
+    labels: conditions,
+    datasets: [{
+      data: conditionCounts,
+      backgroundColor: palette,
+      borderWidth: 1
+    }]
+  });
+
+  const ageLabels = ["18–29", "30–39", "40–49", "50–59", "60–69", "70+"];
+  const ageCounts = ageLabels.map((label, i) =>
+    rows.filter(p => {
+      if (i === 0) return p.age >= 18 && p.age <= 29;
+      if (i === 5) return p.age >= 70;
+      return p.age >= 30 + (i - 1) * 10 && p.age <= 39 + (i - 1) * 10;
+    }).length
+  );
+
+  makeChart("ageChart", "bar", {
+    labels: ageLabels,
+    datasets: [{
+      label: "Patients",
+      data: ageCounts,
+      backgroundColor: "#1769aa"
+    }]
+  }, { scales: { y: { beginAtZero: true } } });
+
+  const sugarMeans = conditions.map(c => {
+    const group = rows.filter(p => p.condition === c);
+    return group.length
+      ? +(group.reduce((sum, p) => sum + p.sugar, 0) / group.length).toFixed(1)
+      : 0;
+  });
+
+  makeChart("sugarChart", "bar", {
+    labels: conditions,
+    datasets: [{
+      label: "Average reading (demo units)",
+      data: sugarMeans,
+      backgroundColor: palette
+    }]
+  }, { scales: { y: { beginAtZero: true } } });
+
+  makeChart("bpChart", "scatter", {
+    datasets: conditions.map((c, i) => ({
+      label: c,
+      data: rows.filter(p => p.condition === c)
+        .map(p => ({ x: p.age, y: p.bp })),
+      backgroundColor: palette[i]
+    }))
+  }, {
+    scales: {
+      x: { title: { display: true, text: "Age (years)" } },
+      y: { title: { display: true, text: "Systolic BP (mmHg)" } }
+    }
+  });
+
+  makeChart("followChart", "bar", {
+    labels: ["Completed", "Pending"],
+    datasets: [{
+      label: "Records",
+      data: [completed, pending],
+      backgroundColor: ["#168568", "#e6a23c"]
+    }]
+  }, { scales: { y: { beginAtZero: true } } });
+
+  const tbody = document.getElementById("patientRows");
+  tbody.replaceChildren();
+
+  rows.slice(0, 15).forEach(p => {
+    const tr = document.createElement("tr");
+    [p.id, p.age, p.condition, p.sugar, p.bp, p.follow].forEach(value => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("conditionFilter")
+  .addEventListener("change", updateDashboard);
+
+document.getElementById("resetButton").addEventListener("click", () => {
+  document.getElementById("conditionFilter").value = "All";
+  updateDashboard();
+});
+
+updateDashboard();
+</script>
+</body>
+</html>
